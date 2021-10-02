@@ -81,4 +81,4 @@ finally:
     if tmpdir and os.path.isdir(tmpdir):
       if DEBUG:
         print("removing tmpdir: " + tmpdir)
-      # os.system("rm -rf " + tmpdir)
+      os.system("rm -rf " + tmpdir)
