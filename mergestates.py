@@ -9,11 +9,20 @@ DRYRUN = os.getenv("DRYRUN", False)
 def run(dir, command):
   if DEBUG:
     print(command)
-  if not DRYRUN:
-    exit_code = os.system("cd "+dir+"; "+command)
-    return exit_code
-  else:
-    return 0
+  return os.system("cd "+dir+"; "+command)
+
+def exists_resource(resource, resources):
+  for item in resources:
+    # "mode":"data",
+    # "type":"aws_route53_zone",
+    # "name":"private",
+    if item["mode"] == resource["mode"] and item["type"] == resource["type"] and item["name"] == resource["name"]:
+      if DEBUG:
+        print("FOUND " + resource['mode'] + " " + resource['type'] + " " + resource['name'])
+      return True
+  return False
+
+###############################################################################
 
 if len(sys.argv) <= 2 :
   sys.exit("Usage: "+ sys.argv[0] + " <project1> <project2> ... <target_project>")
@@ -58,8 +67,24 @@ try:
       # load json state
       state = json.load(open(project['tmpfile']))
 
+      resources = state['resources']
+
+      for resource in target_state['resources']:
+        # merge data resources skipping source resources
+        if resource["mode"] == "data" and exists_resource(resource, resources):
+          if DEBUG:
+            print("      " + resource['type'] + "/" + resource['name'] + " exists in target state")
+          try:
+            resources.remove(resource)
+          except:
+            if DEBUG:
+              print("      skipping "+ resource['mode'] + "." + resource['type'] + "." + resource['name'])
+            pass
+
+      # print(str(resources))
+
       # merge resources
-      target_state['resources'] = state['resources'] + target_state['resources']
+      target_state['resources'] = resources + target_state['resources']
 
   # increment serial
   target_state['serial'] = target_state['serial'] + 1
@@ -68,8 +93,11 @@ try:
   with open(tmpdir+'/merged', 'w') as outfile:
     json.dump(target_state, outfile)
 
-  if run(target_project, "terraform state push  " + tmpdir+'/merged'):
-      sys.exit("Error pushing terraform state to " + target_project)
+  if not DRYRUN:
+    if run(target_project, "terraform state push  " + tmpdir+'/merged'):
+        sys.exit("Error pushing terraform state to " + target_project)
+  else:
+    print("DRYRUN - skipping: terraform state push")
 
 except Exception as e:
   print("Error: " + str(e))
