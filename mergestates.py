@@ -110,3 +110,5 @@ finally:
       if DEBUG:
         print("removing tmpdir: " + tmpdir)
       os.system("rm -rf " + tmpdir)
+  else:
+    print("not removing temporal files: " + tmpdir)
