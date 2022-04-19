@@ -29,8 +29,13 @@ if len(sys.argv) <= 2 :
 
 for project in sys.argv[1:]:
   # check if directory exists
-  if not os.path.isdir(project):
-    sys.exit("Directory " + project + " does not exist")
+  args = project.split(':')
+  if len(args) == 1:
+    if not os.path.isdir(project):
+      sys.exit("Directory " + project + " does not exist")
+  else:
+    if not os.path.isdir(args[0]):
+      sys.exit("Directory " + args[0] + " within "+ project + " does not exist")
 
 try:
   tmpdir = tempfile.mkdtemp()
@@ -40,7 +45,11 @@ try:
   projects = []
   i=0
   for project in sys.argv[1:-1]:
-    projects.append({'name': str(i),'path': project, "tmpfile": tmpdir+"/"+str(i)})
+    args = project.split(':')
+    if len(args) == 1:
+      projects.append({'name': str(i),'path': project, "tmpfile": tmpdir+"/"+str(i)})
+    else:
+      projects.append({'name': str(i),'path': args[0], "tmpfile": tmpdir+"/"+str(i), "item": args[1]})
     i+=1
 
   if DEBUG:
@@ -67,23 +76,49 @@ try:
       # load json state
       state = json.load(open(project['tmpfile']))
 
-      resources = state['resources']
+      # merge all resources
+      if "item" not in project.keys():
+        resources = state['resources']
 
-      for resource in target_state['resources']:
-        # merge data resources skipping source resources
-        if resource["mode"] == "data" and exists_resource(resource, resources):
-          if DEBUG:
-            print("      " + resource['type'] + "/" + resource['name'] + " exists in target state")
-          try:
-            resources.remove(resource)
-          except:
+        for resource in target_state['resources']:
+          # merge data resources skipping source resources
+          if resource["mode"] == "data" and exists_resource(resource, resources):
             if DEBUG:
-              print("      skipping "+ resource['mode'] + "." + resource['type'] + "." + resource['name'])
-            pass
+              print("      " + resource['type'] + "/" + resource['name'] + " exists in target state")
+            try:
+              resources.remove(resource)
+            except:
+              if DEBUG:
+                print("      skipping "+ resource['mode'] + "." + resource['type'] + "." + resource['name'])
+              pass
 
-      # print(str(resources))
+        # print(str(resources))
 
-      # merge resources
+      else:
+        # merge specific resource
+        resources = []
+
+        for resource in state['resources']:
+          # {'module': 'module.spinnaker-service.module.rosco.module.kms-parameter-store[0]', 'mode': 'managed', 'type': 'aws_iam_role_policy_attachment', 'name': 'ssm_role_policy_attachment',
+          base = ''
+          if 'module' in resource.keys():
+            base = resource['module'] + '.'
+
+          if resource['mode'] == 'data':
+            resource_path = base+resource['mode']+'.'+resource['type']+'.'+resource['name']
+          else:
+            resource_path = base+resource['type']+'.'+resource['name']
+
+          # print(">> "+str(resource_path))
+
+          if resource_path == project['item']:
+            if resource["mode"] == "data" and exists_resource(resource, target_state['resources']):
+              if DEBUG:
+                print("      skipping " + resource_path + " Already exists in target state")
+            else:
+              resources.append(resource)
+          
+      # merge resources into target state
       target_state['resources'] = resources + target_state['resources']
 
   # increment serial
