@@ -9,3 +9,6 @@ We can merge resources from any project to any other project, it doesn't really 
 ```
 python mergestates.py /home/jprats/terraform/projectA /home/jprats/terraform/projectB ... /home/jprats/terraform/projectZ
 ```
+
+DEBUG = os.getenv("DEBUG", False)
+DRYRUN = os.getenv("DRYRUN", False)

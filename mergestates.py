@@ -109,7 +109,8 @@ try:
           else:
             resource_path = base+resource['type']+'.'+resource['name']
 
-          # print(">> "+str(resource_path))
+          if DEBUG:
+            print(">> checking resource "+str(resource_path))
 
           if resource_path == project['item']:
             if resource["mode"] == "data" and exists_resource(resource, target_state['resources']):
@@ -117,7 +118,10 @@ try:
                 print("      skipping " + resource_path + " Already exists in target state")
             else:
               resources.append(resource)
-          
+
+      if DEBUG and len(resources) == 0:
+        print("      no-op merge for " + project['path'])
+
       # merge resources into target state
       target_state['resources'] = resources + target_state['resources']
 
