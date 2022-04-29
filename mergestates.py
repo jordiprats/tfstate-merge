@@ -56,6 +56,8 @@ try:
     print("projects:")
     for project in projects:
       print("  " + project['path'])
+      if "item" in project.keys():
+        print("    item: " + project["item"])
 
   target_project = sys.argv[-1]
   if DEBUG:
@@ -66,7 +68,10 @@ try:
     sys.exit("Error retrieving terraform state for " + project['path'])
 
   # load json target state
-  target_state = json.load(open(tmpdir+'/target'))
+  try:
+    target_state = json.load(open(tmpdir+'/target'))
+  except:
+    sys.exit("Error loading target's terraform state")
 
   # retrieve terraform states
   for project in projects:
@@ -74,7 +79,10 @@ try:
       sys.exit("Error retrieving terraform state for " + project['path'])
     else:
       # load json state
-      state = json.load(open(project['tmpfile']))
+      try:
+        state = json.load(open(project['tmpfile']))
+      except:
+        sys.exit("Error loading terraform state for: " + project['path'])
 
       # merge all resources
       if "item" not in project.keys():
@@ -109,14 +117,13 @@ try:
           else:
             resource_path = base+resource['type']+'.'+resource['name']
 
-          if DEBUG:
-            print(">> checking resource "+str(resource_path))
-
           if resource_path == project['item']:
             if resource["mode"] == "data" and exists_resource(resource, target_state['resources']):
               if DEBUG:
                 print("      skipping " + resource_path + " Already exists in target state")
             else:
+              if DEBUG:
+                print(">> adding " + resource_path)
               resources.append(resource)
 
       if DEBUG and len(resources) == 0:
@@ -139,6 +146,10 @@ try:
     print("DRYRUN - skipping: terraform state push")
 
 except Exception as e:
+  if DEBUG:
+    exc_type, exc_obj, exc_tb = sys.exc_info()
+    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+    print(exc_type, fname, exc_tb.tb_lineno)
   print("Error: " + str(e))
   sys.exit(1)
 
