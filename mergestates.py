@@ -95,9 +95,9 @@ try:
               print("      " + resource['type'] + "/" + resource['name'] + " exists in target state")
             try:
               resources.remove(resource)
-            except:
-              if DEBUG:
-                print("      skipping "+ resource['mode'] + "." + resource['type'] + "." + resource['name'])
+            except Exception as _:
+              msg = "WARNING: could not remove duplicate data resource " + resource['mode'] + "." + resource['type'] + "." + resource['name'] + " from source. It may cause duplicate errors on push."
+              print(msg, file=sys.stderr)
               pass
 
         # print(str(resources))
